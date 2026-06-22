@@ -18,8 +18,11 @@ A note publishes only when it has:
 ## Add a new note to this portal
 Recommended Templater base:
 - `/Users/dc-ai-lab/Obsidian-Vault-V2/RESOURCE/Templates/Quartz Client Portal Note.md`
+- defaults to `publish: true`
+- normalizes client scope to `client/...`
+- asks the key setup questions up front so the note is export-ready immediately
 
-Add frontmatter like this in the Obsidian note:
+Add frontmatter like this in the Obsidian note if creating one manually:
 
 ```yaml
 ---
