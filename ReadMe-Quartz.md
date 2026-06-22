@@ -44,6 +44,19 @@ clientPortal: client/SKN-Lab
 ```
 
 ## Export notes from Obsidian into this repo
+### Universal run-anywhere command
+Use this first on either Mac:
+
+```bash
+SCRIPT="$(find ~ -path '*/quartz-client-portals/scripts/run_export_universal.sh' -print -quit 2>/dev/null)"
+[ -n "$SCRIPT" ] && bash "$SCRIPT" || echo "Quartz export helper not found"
+```
+
+What it does:
+- finds `quartz-client-portals` automatically
+- finds `Obsidian-Vault-V2` automatically
+- runs the export with the right paths
+
 ### Option A — direct path
 ```bash
 cd /Users/dc-ai-lab/quartz-client-portals
