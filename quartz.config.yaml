@@ -106,7 +106,7 @@ plugins:
   - source: ./local-plugins/client-portal-filter
     enabled: true
     options:
-      clientTag: client/template
+      clientTag: client/SKN-Lab
       allowUnscopedSlugs:
         - index
     order: 106

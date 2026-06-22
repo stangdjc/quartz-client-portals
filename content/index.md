@@ -15,9 +15,9 @@ This is the shared Quartz deployment template for client-specific portals.
 
 ## Baseline workflow
 
-1. Set the portal tag in `quartz.config.yaml` (replace `client/template` with the real client tag).
+1. Confirm the portal tag in `quartz.config.yaml` (`client/SKN-Lab` for this portal).
 2. Add `publish: true` plus that client tag to every note meant for this portal.
-3. Copy or sync only those notes into this repo.
+3. Run `python3 scripts/export_client_notes.py` to sync only those notes into this repo.
 4. Commit and push to `v5`.
 5. GitHub Pages publishes the site automatically.
 
@@ -25,5 +25,5 @@ This is the shared Quartz deployment template for client-specific portals.
 
 - This repo is meant to be cloned per client.
 - Quartz now fails closed: only notes with `publish: true` and the configured client tag are published.
-- Replace `client/template` in `quartz.config.yaml` before using a cloned portal.
+- Replace `client/SKN-Lab` in `quartz.config.yaml` before using a cloned portal for a different client.
 - Keep client repositories isolated so content never bleeds between sites.

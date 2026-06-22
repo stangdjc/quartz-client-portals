@@ -1,17 +1,21 @@
-# Quartz v5
+# Quartz Client Portals
 
-> “[One] who works with the door open gets all kinds of interruptions, but [they] also occasionally gets clues as to what the world is and what might be important.” — Richard Hamming
+This repo is Dan's **Quartz-based client portal template**.
 
-Quartz is a set of tools that helps you publish your [digital garden](https://jzhao.xyz/posts/networked-thought) and notes as a website for free.
+## Start here
+- Quick reference: [`ReadMe-Quartz.md`](./ReadMe-Quartz.md)
+- Operator/setup notes: [`CLIENT-PORTAL-SETUP.md`](./CLIENT-PORTAL-SETUP.md)
+- Quartz upstream docs: https://quartz.jzhao.xyz/
 
-🔗 Read the documentation and get started: https://quartz.jzhao.xyz/
+## Current live surface
+- Repo: `stangdjc/quartz-client-portals`
+- Pages: `https://stangdjc.github.io/quartz-client-portals/`
+- Deploy branch: `v5`
+- Current client scope: `client/SKN-Lab`
 
-[Join the Discord Community](https://discord.gg/cRFFHYye7t)
+## Purpose
+Use this repo as the baseline for isolated client-facing portals published from an Obsidian vault with a **fail-closed** filter:
+- note must include `publish: true`
+- note must match the configured client scope
 
-## Sponsors
-
-<p align="center">
-  <a href="https://github.com/sponsors/jackyzha0">
-    <img src="https://cdn.jsdelivr.net/gh/jackyzha0/jackyzha0/sponsorkit/sponsors.svg" />
-  </a>
-</p>
+If you are just trying to update notes or spin up a new client portal, use **`ReadMe-Quartz.md`** first.
