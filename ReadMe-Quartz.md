@@ -16,6 +16,9 @@ A note publishes only when it has:
 2. the configured client scope, currently `client/SKN-Lab`
 
 ## Add a new note to this portal
+Recommended Templater base:
+- `/Users/dc-ai-lab/Obsidian-Vault-V2/RESOURCE/Templates/Quartz Client Portal Note.md`
+
 Add frontmatter like this in the Obsidian note:
 
 ```yaml
