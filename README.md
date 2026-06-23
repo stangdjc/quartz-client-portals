@@ -5,6 +5,7 @@ This repo is Dan's **Quartz-based client portal template**.
 ## Start here
 - Quick reference: [`ReadMe-Quartz.md`](./ReadMe-Quartz.md)
 - Operator/setup notes: [`CLIENT-PORTAL-SETUP.md`](./CLIENT-PORTAL-SETUP.md)
+- CASIL transfer prep: [`CASIL-MIGRATION.md`](./CASIL-MIGRATION.md)
 - Quartz upstream docs: https://quartz.jzhao.xyz/
 
 ## Current live surface
