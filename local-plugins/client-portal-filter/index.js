@@ -17,7 +17,11 @@ const normalizeList = (value) => {
 }
 
 const normalizeSlug = (value) => String(value ?? "").replace(/^\/+|\/+$/g, "")
-const normalizeToken = (value) => String(value ?? "").trim().toLowerCase()
+const normalizeToken = (value) =>
+  String(value ?? "")
+    .trim()
+    .replace(/^#/, "")
+    .toLowerCase()
 
 const matchesClientTag = (frontmatter, clientTag) => {
   if (!clientTag) {
@@ -36,8 +40,7 @@ const matchesClientTag = (frontmatter, clientTag) => {
 }
 
 export default function ClientPortalFilter(options = {}) {
-  const configuredClientTag =
-    options.clientTag ?? process.env.QUARTZ_CLIENT_TAG ?? "client/SKN-Lab"
+  const configuredClientTag = options.clientTag ?? process.env.QUARTZ_CLIENT_TAG ?? "client/SKN-Lab"
   const allowUnscopedSlugs = new Set(
     normalizeList(options.allowUnscopedSlugs ?? ["index"]).map(normalizeSlug),
   )

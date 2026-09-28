@@ -1,29 +1,11 @@
 ---
-title: Quartz Client Portals
+title: Client Portal
 publish: true
 ---
 
-# Quartz Client Portals
+Welcome. This portal contains the documents shared with you for our current work together.
 
-This is the shared Quartz deployment template for client-specific portals.
+- Browse with the **explorer** on the left, or use **search** (⌘/Ctrl + K).
+- Pages update as work progresses. The date on each page shows when it last changed.
 
-## How it works
-
-- Keep the source vault in Obsidian.
-- Sync only the notes tagged for a specific client into this repo's `content/` folder.
-- Build and deploy the site from this repo so each client gets a separate publish surface.
-
-## Baseline workflow
-
-1. Confirm the portal tag in `quartz.config.yaml` (`client/SKN-Lab` for this portal).
-2. Add `publish: true` plus that client tag to every note meant for this portal.
-3. Run `python3 scripts/export_client_notes.py` to sync only those notes into this repo.
-4. Commit and push to `v5`.
-5. GitHub Pages publishes the site automatically.
-
-## Notes
-
-- This repo is meant to be cloned per client.
-- Quartz now fails closed: only notes with `publish: true` and the configured client tag are published.
-- Replace `client/SKN-Lab` in `quartz.config.yaml` before using a cloned portal for a different client.
-- Keep client repositories isolated so content never bleeds between sites.
+**Start here:** [[SKN Lab-Data Portal]]

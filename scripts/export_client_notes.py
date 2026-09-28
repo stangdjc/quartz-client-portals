@@ -8,6 +8,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import unquote
 
 MARKDOWN_SUFFIXES = {".md", ".markdown"}
 ASSET_SUFFIXES = {
@@ -86,11 +87,16 @@ def normalize_list(value) -> list[str]:
         return items
     if isinstance(value, bool):
         return []
-    return [part.strip() for part in str(value).split(",") if part.strip()]
+    text = str(value).strip()
+    # Inline YAML lists, e.g. `tags: [quartz, client/SKN-Lab]`
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    return [part.strip().strip("\"'") for part in text.split(",") if part.strip()]
 
 
 def normalize_token(value: str) -> str:
-    return str(value).strip().lower()
+    # Obsidian tags may be written with a leading `#`.
+    return str(value).strip().lstrip("#").lower()
 
 
 def parse_scalar(raw: str):
@@ -167,7 +173,20 @@ def is_publishable(frontmatter: dict, client_tag: str) -> tuple[bool, str]:
     return True, "ok"
 
 
-def resolve_asset_path(raw_reference: str, note_path: Path, source_root: Path) -> Path | None:
+def build_asset_index(source_root: Path) -> dict[str, Path]:
+    """Map lowercase filename -> path so `![[image.png]]` resolves like Obsidian's shortest-path links."""
+    index: dict[str, Path] = {}
+    for path in source_root.rglob("*"):
+        if any(part.startswith(".") for part in path.relative_to(source_root).parts):
+            continue
+        if path.is_file() and path.suffix.lower() in ASSET_SUFFIXES:
+            index.setdefault(path.name.lower(), path.resolve())
+    return index
+
+
+def resolve_asset_path(
+    raw_reference: str, note_path: Path, source_root: Path, asset_index: dict[str, Path]
+) -> Path | None:
     reference = raw_reference.strip()
     if not reference or reference.startswith(("http://", "https://", "mailto:", "#")):
         return None
@@ -176,6 +195,7 @@ def resolve_asset_path(raw_reference: str, note_path: Path, source_root: Path) -
     if not reference:
         return None
 
+    reference = unquote(reference)
     reference_path = Path(reference)
     candidates = []
     if reference_path.is_absolute():
@@ -187,14 +207,16 @@ def resolve_asset_path(raw_reference: str, note_path: Path, source_root: Path) -
     for candidate in candidates:
         if candidate.exists() and candidate.is_file() and candidate.suffix.lower() in ASSET_SUFFIXES:
             return candidate
-    return None
+    return asset_index.get(reference_path.name.lower())
 
 
-def extract_asset_references(markdown_text: str, note_path: Path, source_root: Path) -> set[Path]:
+def extract_asset_references(
+    markdown_text: str, note_path: Path, source_root: Path, asset_index: dict[str, Path]
+) -> set[Path]:
     assets: set[Path] = set()
     for matcher in (EMBED_RE, MARKDOWN_LINK_RE):
         for match in matcher.findall(markdown_text):
-            asset_path = resolve_asset_path(match, note_path, source_root)
+            asset_path = resolve_asset_path(match, note_path, source_root, asset_index)
             if asset_path is not None:
                 assets.add(asset_path)
     return assets
@@ -258,6 +280,7 @@ def main() -> None:
 
     summary = ExportSummary()
     copied_assets: set[Path] = set()
+    asset_index = build_asset_index(source_root)
 
     for note_path in collect_notes(source_root):
         text = note_path.read_text(encoding="utf-8", errors="ignore")
@@ -273,7 +296,7 @@ def main() -> None:
         copy_file(note_path, source_root, destination_root)
         summary.notes_copied += 1
 
-        for asset_path in extract_asset_references(text, note_path, source_root):
+        for asset_path in extract_asset_references(text, note_path, source_root, asset_index):
             if asset_path in copied_assets:
                 continue
             copy_file(asset_path, source_root, destination_root)

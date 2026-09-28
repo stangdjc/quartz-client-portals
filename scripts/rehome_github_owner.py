@@ -21,10 +21,6 @@ TEXT_FILE_UPDATES: dict[str, list[tuple[str, str]]] = {
     "README.md": [
         (r"(- Repo: `)([^`]+)(`)", r"\1{repo_slug}\3"),
         (r"(- Pages: `)https://[^`]+(`)", r"\1{site_url}\2"),
-    ],
-    "ReadMe-Quartz.md": [
-        (r"(- \*\*Repo:\*\* `)https://github\.com/[^`]+(`)", r"\1{repo_url}\2"),
-        (r"(- \*\*Live site:\*\* `)https://[^`]+(`)", r"\1{site_url}\2"),
         (r"(^baseUrl:\s*)(\S*github\.io/quartz-acme-co)(\s*$)", r"\1{example_base_url}\3"),
     ],
 }
