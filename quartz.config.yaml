@@ -7,7 +7,8 @@ configuration:
   analytics:
     provider: plausible
   locale: en-US
-  baseUrl: stangdjc.github.io/quartz-client-portals
+  # Cloudflare URL (no https://). Update after the first deploy if Cloudflare assigns a different one.
+  baseUrl: quartz-client-portals.stangdjc.workers.dev
   ignorePatterns:
     - private
     - templates
@@ -122,7 +123,7 @@ plugins:
   - source: github:quartz-community/og-image
     enabled: true
   - source: github:quartz-community/cname
-    enabled: true
+    enabled: false
   - source: github:quartz-community/canvas-page
     enabled: true
   - source: github:quartz-community/content-page
@@ -204,7 +205,6 @@ plugins:
     enabled: true
     options:
       links:
-        GitHub: https://github.com/stangdjc/quartz-client-portals
         Quartz: https://quartz.jzhao.xyz/
   - source: github:quartz-community/recent-notes
     enabled: false

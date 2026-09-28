@@ -6,7 +6,7 @@
   "type": "module",
   "author": "jackyzha0 <j.zhao2k19@gmail.com>",
   "license": "MIT",
-  "homepage": "https://stangdjc.github.io/quartz-client-portals/",
+  "homepage": "https://quartz-client-portals.stangdjc.workers.dev/",
   "repository": {
     "type": "git",
     "url": "https://github.com/stangdjc/quartz-client-portals.git"
@@ -18,6 +18,8 @@
     "format": "npx prettier . --write",
     "test": "tsx --test",
     "export:client": "python3 scripts/export_client_notes.py",
+    "publish:portal": "bash scripts/publish.sh",
+    "preview:portal": "bash scripts/publish.sh --preview",
     "profile": "0x -D prof ./quartz/bootstrap-cli.mjs build --concurrency=1",
     "install-plugins": "npx tsx ./quartz/plugins/loader/install-plugins.ts",
     "prebuild": "npm run install-plugins"

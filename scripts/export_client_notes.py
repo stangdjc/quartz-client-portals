@@ -5,9 +5,11 @@ import argparse
 import os
 import re
 import shutil
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+from urllib.parse import unquote
 
 MARKDOWN_SUFFIXES = {".md", ".markdown"}
 ASSET_SUFFIXES = {
@@ -86,11 +88,16 @@ def normalize_list(value) -> list[str]:
         return items
     if isinstance(value, bool):
         return []
-    return [part.strip() for part in str(value).split(",") if part.strip()]
+    text = str(value).strip()
+    # Inline YAML lists, e.g. `tags: [quartz, client/SKN-Lab]`
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    return [part.strip().strip("\"'") for part in text.split(",") if part.strip()]
 
 
 def normalize_token(value: str) -> str:
-    return str(value).strip().lower()
+    # Obsidian tags may be written with a leading `#`.
+    return str(value).strip().lstrip("#").lower()
 
 
 def parse_scalar(raw: str):
@@ -167,7 +174,69 @@ def is_publishable(frontmatter: dict, client_tag: str) -> tuple[bool, str]:
     return True, "ok"
 
 
-def resolve_asset_path(raw_reference: str, note_path: Path, source_root: Path) -> Path | None:
+def build_asset_index(source_root: Path) -> dict[str, list[Path]]:
+    """Map lowercase filename -> every matching path, so `![[image.png]]` resolves like Obsidian's shortest-path links."""
+    index: dict[str, list[Path]] = {}
+    for path in source_root.rglob("*"):
+        if any(part.startswith(".") for part in path.relative_to(source_root).parts):
+            continue
+        if path.is_file() and path.suffix.lower() in ASSET_SUFFIXES:
+            index.setdefault(path.name.lower(), []).append(path.resolve())
+    return index
+
+
+def is_within(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
+def common_prefix_len(a: tuple[str, ...], b: tuple[str, ...]) -> int:
+    count = 0
+    for left, right in zip(a, b):
+        if left != right:
+            break
+        count += 1
+    return count
+
+
+def pick_indexed_asset(
+    reference_path: Path, note_path: Path, source_root: Path, asset_index: dict[str, list[Path]]
+) -> Path | None:
+    """Pick the match closest to the note. Fail closed (None) when two matches are equally close,
+    so a filename shared across clients never publishes the wrong file."""
+    candidates = asset_index.get(reference_path.name.lower(), [])
+    ref_parts = tuple(part.lower() for part in reference_path.parts)
+    if len(ref_parts) > 1:
+        candidates = [
+            c for c in candidates
+            if tuple(part.lower() for part in c.relative_to(source_root).parts[-len(ref_parts):]) == ref_parts
+        ]
+    if len(candidates) <= 1:
+        return candidates[0] if candidates else None
+
+    note_dir = note_path.resolve().parent.relative_to(source_root).parts
+    scored = sorted(
+        ((common_prefix_len(c.parent.relative_to(source_root).parts, note_dir), c) for c in candidates),
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    if scored[0][0] == scored[1][0]:
+        matches = ", ".join(str(c.relative_to(source_root)) for _, c in scored if _ == scored[0][0])
+        print(
+            f"WARNING: skipped ambiguous asset '{reference_path}' in {note_path.relative_to(source_root)} "
+            f"(matches: {matches}); use a path in the link to disambiguate",
+            file=sys.stderr,
+        )
+        return None
+    return scored[0][1]
+
+
+def resolve_asset_path(
+    raw_reference: str, note_path: Path, source_root: Path, asset_index: dict[str, list[Path]]
+) -> Path | None:
     reference = raw_reference.strip()
     if not reference or reference.startswith(("http://", "https://", "mailto:", "#")):
         return None
@@ -176,25 +245,32 @@ def resolve_asset_path(raw_reference: str, note_path: Path, source_root: Path) -
     if not reference:
         return None
 
+    reference = unquote(reference)
     reference_path = Path(reference)
-    candidates = []
     if reference_path.is_absolute():
-        candidates.append(reference_path)
-    else:
-        candidates.append((note_path.parent / reference_path).resolve())
-        candidates.append((source_root / reference_path).resolve())
+        return None
+    candidates = [
+        (note_path.parent / reference_path).resolve(),
+        (source_root / reference_path).resolve(),
+    ]
 
     for candidate in candidates:
-        if candidate.exists() and candidate.is_file() and candidate.suffix.lower() in ASSET_SUFFIXES:
+        if (
+            is_within(candidate, source_root)
+            and candidate.is_file()
+            and candidate.suffix.lower() in ASSET_SUFFIXES
+        ):
             return candidate
-    return None
+    return pick_indexed_asset(reference_path, note_path, source_root, asset_index)
 
 
-def extract_asset_references(markdown_text: str, note_path: Path, source_root: Path) -> set[Path]:
+def extract_asset_references(
+    markdown_text: str, note_path: Path, source_root: Path, asset_index: dict[str, list[Path]]
+) -> set[Path]:
     assets: set[Path] = set()
     for matcher in (EMBED_RE, MARKDOWN_LINK_RE):
         for match in matcher.findall(markdown_text):
-            asset_path = resolve_asset_path(match, note_path, source_root)
+            asset_path = resolve_asset_path(match, note_path, source_root, asset_index)
             if asset_path is not None:
                 assets.add(asset_path)
     return assets
@@ -258,6 +334,7 @@ def main() -> None:
 
     summary = ExportSummary()
     copied_assets: set[Path] = set()
+    asset_index = build_asset_index(source_root)
 
     for note_path in collect_notes(source_root):
         text = note_path.read_text(encoding="utf-8", errors="ignore")
@@ -273,7 +350,7 @@ def main() -> None:
         copy_file(note_path, source_root, destination_root)
         summary.notes_copied += 1
 
-        for asset_path in extract_asset_references(text, note_path, source_root):
+        for asset_path in extract_asset_references(text, note_path, source_root, asset_index):
             if asset_path in copied_assets:
                 continue
             copy_file(asset_path, source_root, destination_root)
