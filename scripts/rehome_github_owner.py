@@ -10,18 +10,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPO = "quartz-client-portals"
 
+# Hosting is on Cloudflare (URL is not tied to the GitHub owner), so only repo references change.
 TEXT_FILE_UPDATES: dict[str, list[tuple[str, str]]] = {
-    "quartz.config.yaml": [
-        (r"(^\s*baseUrl:\s*)(\S+)(\s*$)", r"\1{base_url}\3"),
-        (
-            r"(GitHub:\s*)https://github\.com/[^/\s]+/quartz-client-portals",
-            r"\1{repo_url}",
-        ),
-    ],
     "README.md": [
-        (r"(- Repo: `)([^`]+)(`)", r"\1{repo_slug}\3"),
-        (r"(- Pages: `)https://[^`]+(`)", r"\1{site_url}\2"),
-        (r"(^baseUrl:\s*)(\S*github\.io/quartz-acme-co)(\s*$)", r"\1{example_base_url}\3"),
+        (r"(- Repo: `)([^/`]+)(/[^`]+`)", r"\1{owner}\3"),
     ],
 }
 
@@ -53,15 +45,12 @@ def update_text(content: str, replacements: list[tuple[str, str]], values: dict[
 def update_package_json(path: Path, values: dict[str, str], apply: bool) -> int:
     data = json.loads(path.read_text(encoding="utf-8"))
     changes = 0
-    if data.get("homepage") != values["site_url"]:
-        data["homepage"] = values["site_url"]
-        changes += 1
     repository = data.setdefault("repository", {})
     if repository.get("url") != f"{values['repo_url']}.git":
         repository["url"] = f"{values['repo_url']}.git"
         changes += 1
     if apply and changes:
-        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return changes
 
 
@@ -69,13 +58,9 @@ def main() -> int:
     args = parse_args()
     owner = args.owner.strip()
     repo = args.repo.strip()
-    host = f"{owner.lower()}.github.io"
     values = {
-        "repo_slug": f"{owner}/{repo}",
+        "owner": owner,
         "repo_url": f"https://github.com/{owner}/{repo}",
-        "site_url": f"https://{host}/{repo}/",
-        "base_url": f"{host}/{repo}",
-        "example_base_url": f"{host}/quartz-acme-co",
     }
 
     changed_files: list[str] = []
@@ -98,8 +83,6 @@ def main() -> int:
     print(f"target_owner={owner}")
     print(f"target_repo={repo}")
     print(f"repo_url={values['repo_url']}")
-    print(f"site_url={values['site_url']}")
-    print(f"base_url={values['base_url']}")
     if changed_files:
         print("files_to_update=")
         for item in changed_files:

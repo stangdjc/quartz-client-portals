@@ -1,0 +1,14 @@
+// Cloudflare Workers static-assets hosting for this portal.
+// Workers Builds (Git integration) runs the build on every push to v5, then `npx wrangler deploy`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "quartz-client-portals",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./public",
+    // /exported/foo serves exported/foo.html, folders serve index.html
+    "html_handling": "auto-trailing-slash",
+    // Unknown paths serve Quartz's 404.html
+    "not_found_handling": "404-page",
+  },
+}

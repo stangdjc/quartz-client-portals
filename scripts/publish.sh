@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# One-command publish: export scoped notes from the vault -> build -> commit -> push to v5.
+# One-command publish: sync -> export scoped notes from the vault -> build -> commit -> push to v5.
+# Cloudflare Workers Builds deploys automatically on push. Safe to run from any directory.
 #
-#   bash scripts/publish.sh            # export, build, commit, push (GitHub Pages deploys)
+#   bash scripts/publish.sh            # sync, export, build, commit, push
 #   bash scripts/publish.sh --preview  # export + build + serve at http://localhost:8080, no commit
 #   bash scripts/publish.sh --dry-run  # export + build + show what would change, no commit
 #
@@ -24,12 +25,33 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 DEPLOY_BRANCH="v5"
 cd "$REPO_ROOT"
 
+if [ "$MODE" = "publish" ]; then
+  # content/exported is regenerated from the vault below, so leftovers from an interrupted run are safe to drop.
+  git checkout -q -- content/exported 2>/dev/null || true
+  git clean -fdq -- content/exported
+  CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+  if [ "$CURRENT_BRANCH" != "$DEPLOY_BRANCH" ]; then
+    if [ -n "$(git status --porcelain -- . ':!content')" ]; then
+      echo "ERROR: on branch '$CURRENT_BRANCH' with uncommitted changes; commit or stash them first." >&2
+      exit 1
+    fi
+    echo "==> Switching to $DEPLOY_BRANCH"
+    git checkout -q "$DEPLOY_BRANCH"
+  fi
+  echo "==> Syncing with origin/$DEPLOY_BRANCH"
+  git pull -q --ff-only origin "$DEPLOY_BRANCH"
+fi
+
 echo "==> 1/4 Exporting publish:true notes for this portal's client tag"
 QUARTZ_REPO_PATH="$REPO_ROOT" bash "$SCRIPT_DIR/run_export_universal.sh"
 
 if [ ! -d node_modules ]; then
   echo "==> Installing dependencies (first run only)"
   npm ci --no-audit --no-fund
+fi
+if [ ! -d .quartz/plugins ]; then
+  echo "==> Installing Quartz plugins (first run only)"
+  npx quartz plugin install >/dev/null
 fi
 
 if [ "$MODE" = "preview" ]; then
@@ -54,17 +76,9 @@ if [ "$MODE" = "dry-run" ]; then
   exit 0
 fi
 
-CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-if [ "$CURRENT_BRANCH" != "$DEPLOY_BRANCH" ]; then
-  git reset -q -- content
-  echo "ERROR: on branch '$CURRENT_BRANCH'; publishing deploys from '$DEPLOY_BRANCH'." >&2
-  echo "Run: git checkout $DEPLOY_BRANCH" >&2
-  exit 1
-fi
-
 echo "==> 4/4 Committing and pushing to $DEPLOY_BRANCH"
 git commit -q -m "content: publish vault update $(date '+%Y-%m-%d %H:%M')" -- content
 git push origin "$DEPLOY_BRANCH"
 
 SITE_URL="$(node -p "require('./package.json').homepage" 2>/dev/null || true)"
-echo "Done. GitHub Pages will redeploy in ~1-2 minutes: ${SITE_URL}"
+echo "Done. Cloudflare will redeploy in ~1-2 minutes: ${SITE_URL}"
