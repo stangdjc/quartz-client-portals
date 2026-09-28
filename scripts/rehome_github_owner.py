@@ -11,11 +11,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_REPO = "quartz-client-portals"
 
 # Hosting is on Cloudflare (URL is not tied to the GitHub owner), so only repo references change.
-TEXT_FILE_UPDATES: dict[str, list[tuple[str, str]]] = {
-    "README.md": [
-        (r"(- Repo: `)([^/`]+)(/[^`]+`)", r"\1{owner}\3"),
-    ],
-}
+# Every occurrence of the current `owner/repo` slug in these files is rewritten.
+TEXT_FILES = ["README.md"]
+
+
+def current_repo_slug(package_json: Path) -> str:
+    url = json.loads(package_json.read_text(encoding="utf-8")).get("repository", {}).get("url", "")
+    match = re.search(r"github\.com/([^/]+/[^/]+?)(?:\.git)?/?$", url)
+    if not match:
+        raise SystemExit(f"Could not read the current GitHub repo from repository.url in {package_json}")
+    return match.group(1)
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,14 +37,8 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def update_text(content: str, replacements: list[tuple[str, str]], values: dict[str, str]) -> tuple[str, int]:
-    total = 0
-    updated = content
-    for pattern, template in replacements:
-        replacement = template.format(**values)
-        updated, count = re.subn(pattern, replacement, updated, flags=re.MULTILINE)
-        total += count
-    return updated, total
+def update_text(content: str, old_slug: str, new_slug: str) -> tuple[str, int]:
+    return content.replace(old_slug, new_slug), content.count(old_slug)
 
 
 def update_package_json(path: Path, values: dict[str, str], apply: bool) -> int:
@@ -58,17 +57,16 @@ def main() -> int:
     args = parse_args()
     owner = args.owner.strip()
     repo = args.repo.strip()
-    values = {
-        "owner": owner,
-        "repo_url": f"https://github.com/{owner}/{repo}",
-    }
+    old_slug = current_repo_slug(REPO_ROOT / "package.json")
+    new_slug = f"{owner}/{repo}"
+    values = {"repo_url": f"https://github.com/{new_slug}"}
 
     changed_files: list[str] = []
 
-    for rel_path, replacements in TEXT_FILE_UPDATES.items():
+    for rel_path in TEXT_FILES:
         path = REPO_ROOT / rel_path
         original = path.read_text(encoding="utf-8")
-        updated, count = update_text(original, replacements, values)
+        updated, count = update_text(original, old_slug, new_slug)
         if updated != original:
             changed_files.append(f"{rel_path} ({count} replacements)")
             if args.apply:
@@ -80,6 +78,7 @@ def main() -> int:
 
     mode = "APPLY" if args.apply else "DRY RUN"
     print(f"mode={mode}")
+    print(f"current_repo={old_slug}")
     print(f"target_owner={owner}")
     print(f"target_repo={repo}")
     print(f"repo_url={values['repo_url']}")
